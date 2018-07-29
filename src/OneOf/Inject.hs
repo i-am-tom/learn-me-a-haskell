@@ -19,11 +19,12 @@ Dealing with a 'OneOf' can quickly become ugly if you have to write all the
 constructors yourself. To that end, @inject@ uses the type of its argument and
 the type of its result to insert them for you:
 
->>> @inject True :: OneOf '[Bool, String]
+>>> :set -XDataKinds
+>>> inject True :: OneOf '[Bool, String]
 Here True
 
->>> @inject "Hello" :: OneOf '[Bool, String]
-There (Here True)
+>>> inject "Hello" :: OneOf '[Bool, String]
+There (Here "Hello")
 -}
 module OneOf.Inject where
 
@@ -66,10 +67,10 @@ instance {-# OVERLAPPABLE #-} InjectLoop x xs initial
 -- the type we're injecting inside the 'OneOf''s type list. Now that we're
 -- carrying @initial@, we can show a pretty decent type error!
 instance TypeError
-      ( 'Text "You can't lift "  ':<>: 'ShowType stripped
-  ':<>: 'Text " into "           ':<>: 'ShowType (OneOf original)
+      ( 'Text "You can't lift "  ':<>: 'ShowType x
+  ':<>: 'Text " into "           ':<>: 'ShowType (OneOf initial)
 
-  ':$$: 'Text "This is because " ':<>: 'ShowType stripped
+  ':$$: 'Text "This is because " ':<>: 'ShowType x
   ':<>: 'Text " is not one of these types!"
       )
     =>  InjectLoop x '[] initial where

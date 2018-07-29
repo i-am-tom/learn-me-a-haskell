@@ -3,6 +3,22 @@
 It's about time I figured out what all the fuss is about. I'll keep all my
 findings in this repo.
 
+Although this repo mainly exists for my benefit, I've tried to document
+*everything* thoroughly, so I hope it's useful to others. If you have any
+questions or suggestions on how to improve the docs, please [send me a
+tweet](https://www.twitter.com/am_i_tom) or a PR and we'll improve things :)
+
+```bash
+$ # Build the project with haddocks
+$ stack build --haddock --fast
+
+$ # Install the `doctest` tool
+$ cabal install doctest
+
+$ # Run the tests - they're in the docs!
+$ doctest src
+```
+
 ## [OneOf](/src/OneOf/Types.hs#L30-L32)
 
 ### Intro
@@ -45,8 +61,8 @@ f = inject "Hello"
 g :: OneOf '[String, Bool]
 g = inject True
 
-h :: OneOf '[String, Bool, Int]
-h = inject (3 :: Int) -- 3 is too polymorphic without annotation.
+h :: OneOf '[String, Bool, Integer]
+h = inject 3
 ```
 
 `inject` looks through the list for the first occurrence of our type, and

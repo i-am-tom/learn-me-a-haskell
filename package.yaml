@@ -14,6 +14,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - aeson
 - base
+- doctest
 - generic-lens
 - text
 - validation

@@ -17,8 +17,13 @@ elements within the 'OneOf' to have these intsances, as we effectively just
 delegate to them.
 
 >>> Here "hello"            :: OneOf '[String, Bool, [()]]
+Here "hello"
+
 >>> There (Here True)       :: OneOf '[String, Bool, [()]]
+There (Here True)
+
 >>> There (There (Here [])) :: OneOf '[String, Bool, [()]]
+There (There (Here []))
 -}
 module OneOf.Types where
 

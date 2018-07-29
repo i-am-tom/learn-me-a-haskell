@@ -87,12 +87,17 @@ type family FoldSignature (xs :: [Type]) r where
 -- | This type class builds the fold for a given 'OneOf' value. Once that has
 -- happened, usage is straightforward:
 --
--- > fold (inject True :: OneOf '[Int, String, Bool])
--- >   (\_ -> "Int!")
--- >   (\case
--- >       "hello" -> "String!"
--- >       _       -> "Rude string :(")
--- >   (\x -> if x then "YAY" else "BOO")
+-- >>> import OneOf
+-- >>> :set -XLambdaCase -XDataKinds
+-- >>> :{
+-- fold (inject True :: OneOf '[Int, String, Bool])
+--   (\_ -> "Int!")
+--   (\case
+--       "hello" -> "String!"
+--       _       -> "Rude string :(")
+--   (\x -> if x then "YAY" else "BOO")
+-- :}
+-- "YAY"
 --
 -- We can now fold out of our datatype just as we would with @either@.
 
@@ -100,6 +105,7 @@ class BuildFold xs result where
 
   -- | Fold a 'OneOf' value by providing a function for each possible type.
   --
+  -- >>> :set -XDataKinds
   -- >>> :t fold (undefined :: OneOf '[a, b])
   -- fold (undefined :: OneOf '[a, b])
   --   :: (a -> result) -> (b -> result) -> result
