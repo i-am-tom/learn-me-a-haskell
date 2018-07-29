@@ -19,7 +19,7 @@ $ # Run the tests - they're in the docs!
 $ doctest src
 ```
 
-## [OneOf](/src/OneOf/Types.hs#L30-L32)
+## [OneOf](/src/OneOf/Types.hs#L37-L39)
 
 ### Intro
 
