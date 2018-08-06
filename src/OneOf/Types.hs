@@ -18,10 +18,10 @@ Stability   : experimental
 elements within the 'OneOf' to have these intsances, as we effectively just
 delegate to them.
 
->>> Here "hello"            :: OneOf '[String, Bool, [()]]
+>>> Here "hello" :: OneOf '[String, Bool, [()]]
 Here "hello"
 
->>> There (Here True)       :: OneOf '[String, Bool, [()]]
+>>> There (Here True) :: OneOf '[String, Bool, [()]]
 There (Here True)
 
 >>> There (There (Here [])) :: OneOf '[String, Bool, [()]]
@@ -30,6 +30,7 @@ There (There (Here []))
 module OneOf.Types where
 
 import Data.Kind (Constraint, Type)
+import Utils     (Every)
 
 -- | The 'OneOf' type is effectively a generalised @Either@, in the sense that
 -- @Either a b@ is isomorphic to @OneOf '[a, b]@. 'OneOf', however, will hold
@@ -37,17 +38,6 @@ import Data.Kind (Constraint, Type)
 data OneOf (xs :: [Type]) where
   Here  :: x -> OneOf (x ': xs)
   There :: OneOf xs -> OneOf (y ': xs)
-
--- | Produce a constraint from a type-level list using some constraint
--- constructor. See any instance in this module for usage examples.
-type family Every (xs :: [k]) (c :: k -> Constraint) :: Constraint where
-
-  -- An empty list of constraints is no constraint.
-  Every '[]       c = ()
-
-  -- A non-empty list of constraints is the head constraint... and all the
-  -- others... constraint-flattening is weird.
-  Every (x ': xs) c = (c x, Every xs c)
 
 instance Every xs Show => Show (OneOf xs) where
 
@@ -67,6 +57,7 @@ instance Every xs Eq => Eq (OneOf xs) where
   _       == _       = False
 
 instance (Every xs Eq, Every xs Ord) => Ord (OneOf xs) where
+
   -- | We can have @Ord@ if all of our 'OneOf' members are @Ord@. Interesting
   -- quirk of GHC here: we can't magically get @Every xs Eq@ given @Every xs
   -- Ord@ here (maybe this is that entailment thing Kmett talks about?)
