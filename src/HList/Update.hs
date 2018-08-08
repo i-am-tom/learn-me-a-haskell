@@ -34,8 +34,7 @@ the case of multiple entries for the same type.
 Note this is most easily-achieved by turning on 'DataKinds' and
 'TypeApplications':
 
->>> :set -XDataKinds -XScopedTypeVariables -XTypeApplications
->>> :set -fprint-potential-instances
+>>> :set -XDataKinds -XTypeApplications
 >>> :{
 xs :: HList '[Integer, Double, Bool]
 xs = HCons 2 (HCons 2.0 (HCons True HNil))
@@ -66,21 +65,38 @@ import HList.Types  (HList (..))
 import GHC.TypeLits
 import Utils
 
+
+-- | The update class is a convenience wrapper around 'UpdateLoop', which
+-- will provide far better documentation. :)
+--
+-- This class only has one instance, and it's a passthru to UpdateLoop. The
+-- only interesting thing is that it sets @original@ to whatever @s@ is at
+-- the start, meaning we can write some more helpful type errors. 'OneOf''s
+-- 'inject' function is another good example of this.
 class Update (i :: Nat) (s :: [Type]) (t :: [Type]) (a :: Type) (b :: Type)
     | i s b -> t, i t a -> s where
 
-  -- | The update class is a convenience wrapper around 'UpdateLoop', which
-  -- will provide far better documentation. :)
-  --
-  -- This class only has one instance, and it's a passthru to UpdateLoop. The
-  -- only interesting thing is that it sets @original@ to whatever @s@ is at
-  -- the start, meaning we can write some more helpful type errors. 'OneOf''s
-  -- 'inject' function is another good example of this.
-
   update :: (a -> b) -> HList s -> HList t
 
--- | Updating typeclass (I used the optics convention of @s t a b@ - hopefully
--- that's a nice intuition?).
+
+-- | We have five type variables going on here:
+--
+-- - @i@: Which index would you like to update?
+-- - @o@: For type errors, how did the list look when we began?
+-- - @s@: What was in the HList before the update?
+-- - @t@: What will be in the HList after the update?
+-- - @a@: What is the type of the thing you want to update?
+-- - @b@: What will be the type of that thing after the update?
+--
+-- Our functional dependencies say that "there is always a unique @t@ for a
+-- given @i@, @s@, and @b@", and that "there is always a unique @s@ for a
+-- given @i@, @t@, and @a@.
+--
+-- It may not be obvious why we can't determine @a@ from @i@ and @s@ (or,
+-- indeed, @b@ from @i@ and @t@). The reason is our custom type error:
+-- because we want to match on the empty list for @s@ and @t@, we're stuck:
+-- there's no unique @a@ and @b@ at that point, because it's whatever you
+-- failed to find in your list.
 class UpdateLoop
     (i ::  Nat         ) -- Which index should we update?
     (o :: (Nat, [Type])) -- What was in our /original/ index and list?
@@ -90,26 +106,8 @@ class UpdateLoop
     (b ::        Type )  -- What type do we want it to be?
     | i s b -> t, i t a -> s where
 
-  -- | We have five type variables going on here:
-  --
-  -- - @i@: Which index would you like to update?
-  -- - @o@: For type errors, how did the list look when we began?
-  -- - @s@: What was in the HList before the update?
-  -- - @t@: What will be in the HList after the update?
-  -- - @a@: What is the type of the thing you want to update?
-  -- - @b@: What will be the type of that thing after the update?
-  --
-  -- Our functional dependencies say that "there is always a unique @t@ for a
-  -- given @i@, @s@, and @b@", and that "there is always a unique @s@ for a
-  -- given @i@, @t@, and @a@.
-  --
-  -- It may not be obvious why we can't determine @a@ from @i@ and @s@ (or,
-  -- indeed, @b@ from @i@ and @t@). The reason is our custom type error:
-  -- because we want to match on the empty list for @s@ and @t@, we're stuck:
-  -- there's no unique @a@ and @b@ at that point, because it's whatever you
-  -- failed to find in your list.
-
   update' :: (a -> b) -> HList s -> HList t
+
 
 instance {-# OVERLAPPING #-} xs ~ ys
     => UpdateLoop 0 o (a ': xs) (b ': ys) a b where
@@ -117,16 +115,7 @@ instance {-# OVERLAPPING #-} xs ~ ys
   -- | When we're on index 0, our chosen @a@ should be at the front of the
   -- list.  This means that we can apply the @a -> b@ function, and we have the
   -- result type. We're done!
-
   update' f (HCons x xs) = HCons (f x) xs
-
--- | TODO: think about how to solve this problem more carefully. We ideally
--- want some custom type error when the function we've been given doesn't match
--- the types at that index (rather than just "couldn't satisfy constraint").
-
--- instance {-# OVERLAPPABLE #-} TypeError (Text "Type mismatch!")
---     => UpdateLoop 0 (a ': xs) (b ': xs) c d where
---   update = undefined
 
 instance {-# OVERLAPPABLE #-} (x ~ y, UpdateLoop (n - 1) o xs ys a b)
   => UpdateLoop n o (x ': xs) (y ': ys) a b where
@@ -141,53 +130,58 @@ instance {-# OVERLAPPABLE #-} (x ~ y, UpdateLoop (n - 1) o xs ys a b)
   -- and also why the @UpdateLoop 0@ step was labelled with an OVERLAPPING pragma:
   -- whenever we have @0@ as an index, we should definitely pick that instance!
   -- If we picked this one, we'd never stop recursing.
-
   update' f (HCons x xs) = HCons x (update' @(n - 1) @o f xs)
+
 
 -- | Slightly more interesting type error this time round (with a slightly more
 -- ugly construction, of course!) to detect whether an index be out-of-bounds
 -- for a given list. If this happens, we'll get a friendly error in the GHC
 -- output.
-
 type family ShowOverflowError (index :: Nat) (list :: [k]) :: ErrorMessage where
   ShowOverflowError index list
-    = ShowType index :<>: Text " is out of bounds for "
-        :<>: ShowType list :<>: Text "!"
+    = 'ShowType index ':<>: 'Text " is out of bounds for "
+        ':<>: 'ShowType list ':<>: 'Text "!"
 
-      :$$: Text "We'll need at least 0, and at most "
-        :<>: ShowType (Length list - 1) :<>: Text "."
+      ':$$: 'Text "We'll need at least 0, and at most "
+        ':<>: 'ShowType (Length list - 1) ':<>: 'Text "."
+
 
 -- | If we focus on a type that isn't the same as our function input, we should
 -- also probably say something helpful. Thus, here we build up a type error by
 -- looking up what the expected input was, and printing that alongside the
 -- function we were given.
+type family ShowIndexTypeError
+    (index ::   Nat )
+    (list  :: [Type])
+    (a     ::  Type )
+    (b     ::  Type ) :: ErrorMessage
+    where
+  ShowIndexTypeError index list a b
+    = 'Text "You can't apply " ':<>: 'ShowType (a -> b) ':<>: 'Text " to the "
+        ':<>: 'ShowType (Lookup index list) ':<>: 'Text " at index #"
+        ':<>: 'ShowType index ':<>: 'Text "."
 
-type family ShowIndexTypeError (n :: Nat) (o :: [k]) (a :: Type) :: ErrorMessage where
-  ShowIndexTypeError n o f
-    = Text "You can't apply " :<>: ShowType f :<>: Text " to the "
-        :<>: ShowType (Lookup n o) :<>: Text " at index #"
-        :<>: ShowType n :<>: Text "."
+      ':$$: 'Text "I'm sorry, captain; I just won't do it."
 
-      :$$: Text "I'm sorry, captain; I just won't do it."
-
--- | Here's our actual error instance: we use our 'If' family to determine
--- which of the usual suspects is most likely causing the problem, and return
--- it to the user. The instance is empty as it'll never compile, so we're all
--- good :)
 
 instance TypeError
        ( If (Between 0 (Length list - 1) index)
-            (ShowIndexTypeError index list (a -> b))
-            (ShowOverflowError index list) )
+            (ShowIndexTypeError index list a b)
+            (ShowOverflowError index list)
+       )
     => UpdateLoop n '(index, list) '[] '[] a b where
+
+  -- | Here's our actual error instance: we use our 'If' family to determine
+  -- which of the usual suspects is most likely causing the problem, and return
+  -- it to the user. The instance is empty as it'll never compile, so we're all
+  -- good :)
   update' = undefined
 
-instance UpdateLoop i '(i, s) s t a b
-    => Update i s t a b where
+
+instance UpdateLoop i '(i, s) s t a b => Update i s t a b where
 
   -- | Finally, here's our convenience instance for 'Update': we pass the
   -- requested index and the original list in as the "original state" that we
   -- carry in case of errors. Kinda underwhelming.
-
   update = update' @i @'(i, s)
 

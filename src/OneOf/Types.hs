@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
+{-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE GADTs                #-}
 {-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeInType           #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -29,7 +29,7 @@ There (There (Here []))
 -}
 module OneOf.Types where
 
-import Data.Kind (Constraint, Type)
+import Data.Kind (Type)
 import Utils     (Every)
 
 -- | The 'OneOf' type is effectively a generalised @Either@, in the sense that

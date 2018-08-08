@@ -72,7 +72,7 @@ instance (Every elements Eq, Every elements Ord) => Ord (HList elements) where
   compare (HCons x xs) (HCons y ys)
     = case compare x y of
         EQ -> compare xs ys
-        xs -> xs
+        no -> no
 
   -- | Ordering for empty lists is trivial - we treat empty HLists exactly as
   -- we treat the unit type - all units are equal (because there's only one).
@@ -94,6 +94,7 @@ instance Monoid (HList '[]) where
 
 instance (Monoid x, Monoid (HList xs), Every xs Semigroup)
     => Monoid (HList (x ': xs)) where
+
   -- | A non-empty `HList` is @Monoid@ if we can fill every element with
   -- @mempty@.
   mempty = HCons mempty mempty
