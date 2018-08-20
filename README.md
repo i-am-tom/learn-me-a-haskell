@@ -25,6 +25,7 @@ $ doctest src
 
 - [OneOf](#oneof)
 - [HList](#hlist)
+- [HTree](#htree)
 
 ## [OneOf](/src/OneOf/Types.hs#L38-L40)
 
@@ -172,7 +173,7 @@ h = build
 _This involves some fun tricks behind the scenes that I've documented in [the
 `HList.build` file](src/HList/Build.hs)._
 
-## Updating
+### Updating
 
 Now we have our glorious `HList`, can we change the values – or even _types_ –
 within it? You bet!
@@ -203,7 +204,7 @@ We can see here that our index is updated when the types align, and we
 otherwise get some nice custom type errors! _I'd like to add more type errors
 here, but I'm at the stage where I have to wrestle a bit with incoherence)_.
 
-## Projection
+### Projection
 
 We have an `HList`, and we can pattern-match as we want, but... can we _fold_
 an `HList`? Well, similarly to `OneOf`, we can have a constrained fold:
@@ -225,3 +226,103 @@ Another fun consequence of this generalisation is that we can recover
 homogeneous operations like `foldMap` by using a constraint like `((~)
 element)` (every element of the list must be equal to some type `element`). In
 fact, that's exactly how `foldMap` is implemented within this library!
+
+## [HTree](/src/HTree/Types.hs#L66-L78)
+
+### Intro
+
+`HList` is great and all, but it's not the most efficient structure when our
+list grows and access is random. GHC does no caching and **no optimisation**
+with list lookups at the type-level, so linear access becomes _very_ expensive.
+If this is our use case, we could consider a different structure, such as a
+tree!
+
+An `HTree` is exactly this: a heterogeneous tree, as opposed to a list.
+Specifically, it's a **binary** tree indexed by a **red-black** tree of types,
+which we use to keep the tree (roughly) balanced. A serious hat-tip is due to
+**Chris Okasaki** for his **Red-Black Trees in a Functional Setting** paper,
+which I used for the implementation of `insert` and `delete`.
+
+### Construction
+
+So, this all sounds well and good, but how do we construct one? We need a way
+of ordering types, which we achieve through use of the `Generic` class – we
+order types by their names – and the `insert` function:
+
+```haskell
+newtype Name
+  = Name String
+  deriving (Generic, Show)
+
+newtype Age
+  = Age Int
+  deriving (Generic, Show)
+
+example :: HTree ('Node 'Black ('Node 'Empty Age 'Empty) Name 'Empty)
+example
+  = insert (Age 25)
+  . insert (Name "Tom")
+  $ empty
+```
+
+`insert` gives us a way to build a tree of types, providing that the types are
+`Generic`. However, the type of an `HTree` can quickly become ugly, so you
+might want to stick to polymorphic approaches:
+
+```haskell
+addSomeTom :: (Insert Name i m, Insert Age m o) => HTree i -> HTree o
+addSomeTom = insert (Age 25) . insert (Name "Tom")
+```
+
+Rather than talking about what a tree _is_, we can use the `Insert` typeclass
+to talk about its state _before_ and _after_ inserting a variable, and let GHC
+worry about the full type.
+
+### Deletion
+
+Deletion is as you'd imagine: we use type application to specify the type we
+want to delete, and everything else works as `insert` did:
+
+```haskell
+-- (.)<-(Age 25)->(.)
+demo :: HTree ('Node 'Black 'Empty Age 'Empty)
+demo = delete @Name example
+```
+
+... and we can use the constraints to deal with a tree polymorphically:
+
+```haskell
+anonymise :: Delete Name input output => HTree input -> HTree output
+anonymise = delete @Name
+```
+
+Note that deleting a type from a tree is a *no-op* if the tree doesn't contain
+the type. It is *not* a type error.
+
+### Access
+
+Of course, the last interesting function on an `HTree` is this access we keep
+talking about. This is provided by the `getType` function within the `HasType`
+class:
+
+```haskell
+test :: HasType Name input => HTree input -> Name
+test = getType
+
+name = test example -- Name "Tom"
+```
+
+All polymorphic, all *beautiful*. Naturally, GHC will help you if you go
+looking for a type that isn't in the tree:
+
+```haskell
+-- ... I couldn't find any Bool in this tree...
+-- ... If it helps, here's what I did find:
+-- ... - Age
+-- ... - Name
+d'oh = getType @Bool example
+
+-- ... You won't find any Bool here!
+-- ... Your tree is empty; there's nothing to access!
+oops = getType @Bool empty
+```

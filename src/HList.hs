@@ -1,8 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 {-|
-Module      : OneOf
-Description : A generalised @Either@ type.
+Module      : HList
+Description : A generalised @Tuple@ type.
 Copyright   : (c) Tom Harding, 2018
 License     : MIT
 Maintainer  : tom.harding@habito.com
@@ -49,6 +49,7 @@ we always know the types!
 == Construction
 
 >>> :set -XDataKinds
+>>> import Prelude
 >>> :{
 f :: HList '[String]
 f = HCons "Hello!" HNil
