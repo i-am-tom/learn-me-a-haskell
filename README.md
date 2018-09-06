@@ -68,7 +68,7 @@ f = inject "Hello"
 g :: OneOf '[String, Bool]
 g = inject True
 
-h :: OneOf '[String, Bool, Integer]
+h :: OneOf '[String, Integer, Bool]
 h = inject 3
 ```
 
