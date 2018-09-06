@@ -1,3 +1,4 @@
+*.DS_Store
 *.aux
 *.chi
 *.chs.h
@@ -20,4 +21,3 @@ cabal.project.local*
 cabal.sandbox.config
 dist
 dist-*
-experiments.cabal

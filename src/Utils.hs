@@ -1,16 +1,20 @@
 {-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE ExplicitNamespaces   #-}
 {-# LANGUAGE PolyKinds            #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Utils
-  ( Between
+  ( All
+  , Between
   , CmpType
   , Every
   , If
   , Length
   , Lookup
   , TypeName
+
+  , type (++)(..)
   ) where
 
 import Data.Kind    (Constraint, Type)
@@ -27,10 +31,29 @@ import GHC.TypeLits
 --
 -- Note that nested constraints are automatically flattened, so this is totally
 -- equivalent to @(Show Int, Show Bool)@.
-type family Every (xs :: [k]) (c :: k -> Constraint) :: Constraint where
-  Every '[]       c = ()
-  Every (x ': xs) c = (c x, Every xs c)
+type family Every
+    (items      :: [k]             )
+    (constraint ::  k -> Constraint) :: Constraint
+  where
+    Every '[]            constraint = ()
+    Every (head ': tail) constraint = (constraint head, Every tail constraint)
 
+
+-- | Intuitively the "opposite" of 'Every': produce a constraint that is built
+-- from a thing applied to a type-level list of constraints.
+--
+-- >>> :kind! All '[Show, Eq] Int
+-- All '[Show, Eq] Int :: Constraint
+-- = (Show Int, (Eq Int, () :: Constraint))
+--
+-- Again, constraint-flattening means that this is equivalent to
+-- @(Show Int, Eq Int)@.
+type family All
+    (constraints :: [k -> Constraint])
+    (item        ::  k               ) :: Constraint
+  where
+    All '[]            item = ()
+    All (head ': tail) item = (head item, All tail item)
 
 -- | Depending on the value of a predicate, evaluate to the @true@ or @false@
 -- value provided. Note that this is entirely eager, so both options will be

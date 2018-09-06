@@ -1,0 +1,2 @@
+optional-packages: * vendor/*
+extra-lib-dirs: /usr/lib

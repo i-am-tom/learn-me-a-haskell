@@ -12,13 +12,11 @@ tweet](https://www.twitter.com/am_i_tom) or a PR and we'll improve things :)
 
 ```bash
 $ # Build the project with haddocks
-$ stack build --haddock --fast
-
-$ # Install the `doctest` tool
-$ cabal install doctest
+$ cabal new-build
+$ cabal new-haddock
 
 $ # Run the tests - they're in the docs!
-$ doctest src
+$ cabal new-run test
 ```
 
 ## Table of Contents
@@ -26,6 +24,7 @@ $ doctest src
 - [OneOf](#oneof)
 - [HList](#hlist)
 - [HTree](#htree)
+- [Bag](#bag)
 
 ## [OneOf](/src/OneOf/Types.hs#L38-L40)
 
@@ -326,3 +325,171 @@ d'oh = getType @Bool example
 -- ... Your tree is empty; there's nothing to access!
 oops = getType @Bool empty
 ```
+
+## [Bag](/src/Bag/Types.hs#L99-L100)
+
+_The idea for this came from a talk by Will Jones, our VP Engineering at
+[Habito](habito.com), on [Deriving
+Strategies](https://www.youtube.com/watch?v=U0j9iIKOj40). Always hiring, etc!_
+
+### Intro
+
+Let's imagine you're building a **web app** that involves a lot of forms:
+
+```haskell
+data Account
+  = Account
+      { email    :: Email
+      , password :: Password
+      }
+
+data Profile
+  = Profile
+      { name :: Name
+      , age  :: Age
+      }
+
+-- ...
+```
+
+These forms may be completed in various orders, and to various degrees, which
+leaves us with a _lot_ of potentially-partial data. To accommodate this, we
+have to make all these fields optional:
+
+```haskell
+data PartialAccount
+  = Account
+      { email    :: Maybe Email
+      , password :: Maybe Password
+      }
+
+-- ...
+```
+
+We no longer have a compile-time way of ensuring we have all the data in this
+type, so we have to attempt to build the original types at run-time, `Maybe`
+succeeding, maybe failing. As we add more forms to our app, so too do we add
+more partial types.
+
+The `Bag` type, however, generalises this notion: it `Maybe` contains **any**
+type! Rather than specify near-verbatim copies of every type, we can now just
+use `Bag` to collect all the data we need. For example:
+
+```haskell
+newtype Name = Name String deriving Generic
+newtype Age  = Age  Int    deriving Generic
+
+userData :: Bag'
+userData
+  = insert (Name "Tom")
+  $ insert (Age  25   )
+
+  -- Under the hood, a `Bag` type is really just a newtype around `HashMap`,
+  -- which means it's automagically a `Semigroup` and a `Monoid`! As a result,
+  -- `mempty` here means "an empty bag".
+  $ mempty
+
+-- ... Another place at another time ...
+
+userName :: Name
+userName = lookup userData
+```
+
+As type inference relies on the **return type** of the `lookup` function, it's
+certainly encouraged to use the `TypeApplications` feature to improve
+readability (and inference, in more ambiguous cases):
+
+```haskell
+f = do
+  name <- lookup @Name userData
+  -- etc...
+```
+
+## Constrained bags
+
+We've so far only looked at `Bag'`, which is a specialisation of the `Bag` type
+that enforces no constraints on the contents. The `Bag` type allows us to
+specify constraint constructors that hold for any member of the bag. For
+example:
+
+```haskell
+-- Doesn't have a `Show` instance!
+newtype Name = Name String
+
+-- ... No instance for (Show Name) arising from a use of ‘insert’
+test :: Bag '[Show]
+test = insert (Name "Tom") mempty
+
+-- Does have a show instance!
+newtype Age = Age 25 deriving Show
+
+success :: Bag '[Show]
+success = insert (Age 25) mempty
+```
+
+You can also use these constructors to write instances for the entire bag
+(using some [QuantifiedConstraints](/src/Bag/QuantifiedInstances.hs#L92)
+magic) - this library provides instances for `Eq` and `Show`. In essence, if
+the bag's constraints are enough to imply a `Show` instance, we can write a
+`Show` instance for the baga (similarly for `Eq`):
+
+```haskell
+newtype Name = Name String deriving (Show, Eq)
+newtype Age  = Age  Int    deriving (Show, Eq)
+
+demo :: Bag '[Show, Eq]
+demo = insert (Name "Tom") $ insert (Age 25) $ mempty
+
+-- "Bag (fromList [(Age,Age 25),(Name,Name \"Tom\")])"
+showable :: String
+showable = show demo
+
+-- False
+eqable :: Bool
+eqable = demo == mempty
+```
+
+## Type hydration
+
+If you have a type whose fields are all potentially in a `Bag`, you can use the
+`populate` function to attempt to construct the type:
+
+```haskell
+data Person
+  = Person
+      { name :: Name
+      , age  :: Age
+      }
+  deriving (Show, Generic)
+
+-- Sucess (Person {name = Name "Tom", age = Age 25})
+yay = populate @Person demo
+
+-- Failure ["Name","Age"]
+boo = populate @Person (mempty :: Bag')
+```
+
+If every field in the type's record or product can be found in the `Bag`, the
+constructed value will be returned. Otherwise, we get a list of the names of
+the types that were missing. There's unfortunately not much more you can do at
+this stage, but it may be useful information for logging or debugging!
+
+## Bag hydration
+
+The opposite control is to take a record/product type and use it to populate a
+`Bag`. For this, we have the `include` function:
+
+```haskell
+myBag :: Bag'
+myBag = mempty
+
+test :: Bag '[Show]
+test = include (Person (Name "Tom") (Age 25)) mempty
+
+x = show test
+-- Bag (fromList [(Name,Name "Tom"),(Age,Age 25)])
+```
+
+Every time an inner type is encountered, it will attempt to insert this type
+into the `Bag`. Note that this means **all types** inside your product must
+implement **all constraints** on the `Bag`.
