@@ -431,7 +431,7 @@ You can also use these constructors to write instances for the entire bag
 (using some [QuantifiedConstraints](/src/Bag/QuantifiedInstances.hs#L92)
 magic) - this library provides instances for `Eq` and `Show`. In essence, if
 the bag's constraints are enough to imply a `Show` instance, we can write a
-`Show` instance for the baga (similarly for `Eq`):
+`Show` instance for the bag (similarly for `Eq`):
 
 ```haskell
 newtype Name = Name String deriving (Show, Eq)

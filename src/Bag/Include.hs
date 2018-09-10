@@ -55,17 +55,17 @@ import Bag.Types       (Bag (..), insert)
 import Utils           (All)
 
 
--- | Use generics to "absorb" a value into a bag.
-include
-  :: ( Generic object
-     , GInclude (Rep object) constraints
-     )
-  => object
-  -> Bag constraints
-  -> Bag constraints
+-- | "Include" everything from a type in a bag. Really, "import" is the word I
+-- /wanted/ to use, but keywords are annoying.
+class Include (object :: Type) (constraints :: [Type -> Constraint]) where
+  include :: object -> Bag constraints -> Bag constraints
 
-include
-  = ginclude . from
+
+-- | Use generics to "absorb" a value into a bag.
+instance (Generic object, GInclude (Rep object) constraints)
+    => Include object constraints where
+  include
+    = ginclude . from
 
 
 -- | Walk the generic representation of a type looking for "inner types" that

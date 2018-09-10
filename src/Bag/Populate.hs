@@ -77,11 +77,24 @@ comprehensive type-checking.
 >>> populate @Person (insert (Name "Tom") (mempty @Bag'))
 Failure ["Age"]
 
+One last little trick: thanks to the `OVERLAPPING` pragma, we can treat some
+types as "special cases" in this function. For example, this library will treat
+a 'Maybe'-wrapped field as an "acceptable failure": if the value can't be found
+in the bag, the field is set to 'Nothing'.
+
+>>> :{
+data MysteryPerson = MysteryPerson
+  { name :: Name
+  , age  :: Maybe Age
+  }
+  deriving (Generic, Show)
+:}
+
+>>> populate @MysteryPerson (insert (Name "Tom") (mempty @Bag'))
+Success (MysteryPerson {name = Name "Tom", age = Nothing})
+
 -}
-module Bag.Populate
-  ( populate
-  , populate'
-  ) where
+module Bag.Populate where
 
 import           Data.Kind       (Constraint, Type)
 import           Data.Proxy      (Proxy (..))
@@ -102,24 +115,24 @@ import           Utils           (All, Every, TypeName, type (++))
 -- we can pattern-match on 'Validation' to see whether we succeeded, or which
 -- types were missing. The latter may be useful if your pattern-matching is
 -- exhaustive enough!
-populate
-  :: forall structure constraints result
-   . ( Generic structure
-     , GPopulate (Rep structure) constraints
-     )
-  => Bag constraints
-  -> Validation [Text.Text] structure
+class Populate (structure :: Type) (constraints :: [Type -> Constraint]) where
+  populate
+    :: Bag constraints
+    -> Validation [Text.Text] structure
 
-populate
-  = fmap to . gpopulate
+
+-- | As per usual, we can get the instance for free with any valid (and
+-- generics-implementing) type.
+instance (Generic structure, GPopulate (Rep structure) constraints)
+    => Populate structure constraints where
+  populate
+    = fmap to . gpopulate
 
 
 -- | Like 'populate', but as a 'Maybe'. Just a little neater.
 populate'
   :: forall structure constraints
-  . ( Generic structure
-    , GPopulate (Rep structure) constraints
-    )
+   . Populate structure constraints
   => Bag constraints
   -> Maybe structure
 
@@ -195,3 +208,12 @@ instance (Typeable inner, All constraints inner)
             $ Typeable.typeRepTyCon
             $ Typeable.typeRep @inner
             ]
+
+-- | One last sneaky trick: we can populate types whose values may be missing
+-- by writing an overlapping instance looking out for a 'Maybe' constructor.
+-- When it's spotted, there's no failure case: we just use the result of
+-- 'lookup' directly! This means that we can populate values with optional
+-- fields.
+instance {-# OVERLAPPING #-} (Typeable inner, All constraints inner)
+    => GPopulate (K1 R (Maybe inner)) constraints where
+  gpopulate = Success . K1 . lookup

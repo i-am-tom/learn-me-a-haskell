@@ -1,9 +1,11 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE ExplicitNamespaces   #-}
-{-# LANGUAGE PolyKinds            #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Utils
   ( All
   , Between
@@ -14,12 +16,18 @@ module Utils
   , Lookup
   , TypeName
 
+  , type (&&)
+  , type (||)
   , type (++)(..)
+  , typeableName
   ) where
 
-import Data.Kind    (Constraint, Type)
-import GHC.Generics (D1, Meta(..), Rep)
-import GHC.TypeLits
+import           Data.Kind       (Constraint, Type)
+import           Data.Proxy      (Proxy (..))
+import qualified GHC.Generics    as G
+import           GHC.TypeLits
+import           Type.Reflection (Typeable (..))
+import qualified Type.Reflection as Typeable
 
 
 -- | Produce a constraint that is built from a type-level list of things
@@ -54,6 +62,7 @@ type family All
   where
     All '[]            item = ()
     All (head ': tail) item = (head item, All tail item)
+
 
 -- | Depending on the value of a predicate, evaluate to the @true@ or @false@
 -- value provided. Note that this is entirely eager, so both options will be
@@ -147,6 +156,20 @@ type family (x :: Bool) && (y :: Bool) :: Bool where
   'False && y = 'False
 
 
+-- | Type-level boolean disjunction. Just like regular (||), but promoted.
+--
+-- >>> :kind! 'False || 'False
+-- 'False || 'False :: Bool
+-- = 'False
+--
+-- >>> :kind! 'True || 'False
+-- 'True || 'False :: Bool
+-- = 'True
+type family (x :: Bool) || (y :: Bool) :: Bool where
+  'True  || y = 'True
+  'False || y = y
+
+
 -- | Return the bigger of two type-level naturals.
 --
 -- >>> :kind! Max 1 3
@@ -183,7 +206,7 @@ type Between (lower :: Nat) (upper :: Nat) (value :: Nat)
 -- | Get the name of a type from its generic representation. Note that this is
 -- partial, but private.
 type family RepName (x :: Type -> Type) :: Symbol where
-  RepName (D1 ('MetaData name _ _ _) _) = name
+  RepName (G.M1 G.D ('G.MetaData name _ _ _) _) = name
 
 
 -- | Get the name of any type with a generic representation as a type-level
@@ -200,7 +223,22 @@ type family RepName (x :: Type -> Type) :: Symbol where
 -- TypeName Name :: Symbol
 -- = "Name"
 type family TypeName (x :: Type) :: Symbol where
-  TypeName x = RepName (Rep x)
+  TypeName x = RepName (G.Rep x)
+
+
+-- | Get the name of a type using its 'Typeable' instance, rather than its
+-- 'Generic' instance.
+--
+-- >>> import Data.Typeable
+-- >>> newtype Name = Name String
+--
+-- >>> typeableName @Name
+-- "Name"
+typeableName :: forall input. Typeable input => String
+typeableName
+  = Typeable.tyConName
+  . Typeable.typeRepTyCon
+  $ Typeable.typeRep @input
 
 
 -- | Compare two types using their names as symbols. It's not perfect, but it's
