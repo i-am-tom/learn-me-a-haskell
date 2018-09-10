@@ -14,7 +14,7 @@ Stability   : experimental
 
 Csongor Kiss' [generic-lens](https://github.com/kcsongor/generic-lens) package
 is a masterpiece of type-level wizardry, and I thoroughly recommend that you
-give it a look if you're not already using it. Among the/many/ things it does
+give it a look if you're not already using it. Among the /many/ things it does
 @generic-lens@ provides a 'typed' function that provides you a lens to a
 particular type inside a structure providing that it is always unique within
 the structure.

@@ -9,16 +9,11 @@ cabal-version:       >= 1.10
 
 library
   exposed-modules:     Utils
---                     , State
                      , HTree
                      , HList
---                     , Form
                      , Contains
                      , Bag
                      , OneOf
-                     , Form.Validation
-                     , Form.Question
-                     , Form.Validation.Populate
                      , HTree.Insert
                      , HTree.Balance
                      , HTree.Delete
@@ -37,7 +32,7 @@ library
 
   -- We need QuantifiedConstraints for this to work!
   if impl(ghc >= 8.6)
-   exposed-modules:  Bag.QuantifiedInstances
+   exposed-modules:    Bag.QuantifiedInstances
 
   build-depends:       base
                      , aeson
