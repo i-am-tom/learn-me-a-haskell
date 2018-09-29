@@ -8,27 +8,28 @@ build-type:          Simple
 cabal-version:       >= 1.10
 
 library
-  exposed-modules:     Utils
-                     , HTree
-                     , HList
-                     , Contains
-                     , Bag
-                     , OneOf
-                     , HTree.Insert
-                     , HTree.Balance
-                     , HTree.Delete
-                     , HTree.Types
-                     , HTree.Access
-                     , OneOf.Inject
-                     , OneOf.Fold
-                     , OneOf.Types
+  exposed-modules:     Bag
                      , Bag.Include
                      , Bag.Populate
                      , Bag.Types
-                     , HList.Fold
-                     , HList.Update
+                     , Contains
+                     , HList
                      , HList.Build
+                     , HList.Fold
                      , HList.Types
+                     , HList.Update
+                     , HTree
+                     , HTree.Access
+                     , HTree.Balance
+                     , HTree.Delete
+                     , HTree.Insert
+                     , HTree.Types
+                     , OneOf
+                     , OneOf.Fold
+                     , OneOf.Inject
+                     , OneOf.Types
+                     , Utils
+                     , Utils.Lift
 
   -- We need QuantifiedConstraints for this to work!
   if impl(ghc >= 8.6)

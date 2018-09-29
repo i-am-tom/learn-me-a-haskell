@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -16,6 +17,7 @@ module Utils
   , Lookup
   , TypeName
 
+  , type (~>)
   , type (&&)
   , type (||)
   , type (++)(..)
@@ -28,6 +30,12 @@ import qualified GHC.Generics    as G
 import           GHC.TypeLits
 import           Type.Reflection (Typeable (..))
 import qualified Type.Reflection as Typeable
+
+
+-- | Natural transformation between two functors. The inner type cannot be
+-- inspected, so it must be an operation on the "container" structure.
+type (f :: Type -> Type) ~> (g :: Type -> Type)
+  = forall x. (Functor f, Functor g) => f x -> g x
 
 
 -- | Produce a constraint that is built from a type-level list of things
