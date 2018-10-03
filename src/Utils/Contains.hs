@@ -36,7 +36,7 @@ data Person
 HCons "Tom" (HNil)
 
 -}
-module Contains where
+module Utils.Contains where
 
 import Control.Applicative (Const (..))
 import           Data.Kind             (Type)

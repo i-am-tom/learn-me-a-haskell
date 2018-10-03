@@ -12,7 +12,6 @@ library
                      , Bag.Include
                      , Bag.Populate
                      , Bag.Types
-                     , Contains
                      , HList
                      , HList.Build
                      , HList.Fold
@@ -29,6 +28,7 @@ library
                      , OneOf.Inject
                      , OneOf.Types
                      , Utils
+                     , Utils.Contains
                      , Utils.Lift
 
   -- We need QuantifiedConstraints for this to work!
