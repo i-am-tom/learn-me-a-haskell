@@ -25,9 +25,11 @@ module Utils
   ) where
 
 import           Data.Kind       (Constraint, Type)
+import           Data.Text       (Text)
+import qualified Data.Text       as Text
 import           Data.Proxy      (Proxy (..))
 import qualified GHC.Generics    as G
-import           GHC.TypeLits
+import           GHC.TypeLits    hiding (Text)
 import           Type.Reflection (Typeable (..))
 import qualified Type.Reflection as Typeable
 
@@ -242,9 +244,10 @@ type family TypeName (x :: Type) :: Symbol where
 --
 -- >>> typeableName @Name
 -- "Name"
-typeableName :: forall input. Typeable input => String
+typeableName :: forall input. Typeable input => Text
 typeableName
-  = Typeable.tyConName
+  = Text.pack
+  . Typeable.tyConName
   . Typeable.typeRepTyCon
   $ Typeable.typeRep @input
 
